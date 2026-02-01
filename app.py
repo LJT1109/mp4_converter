@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 import shutil
 import tempfile
+import subprocess
 
 # Cross-platform temporary file path
 TEMP_NPY_PATH = os.path.join(tempfile.gettempdir(), "temp_output.npy")
@@ -173,11 +174,8 @@ async def playback_loop():
                         # Get flattened data for current frame
                         frame_data = state.video_data[state.current_frame]
                         
-                        # If grayscale, repeat to create RGB structure for client
-                        if state.grayscale:
-                            # (Pixels,) -> (Pixels, 3) -> flattened
-                            # np.repeat([1, 2], 3) -> [1, 1, 1, 2, 2, 2] which is R=G=B
-                            frame_data = np.repeat(frame_data, 3)
+                        # Broadcast frame data
+
                             
                         await manager.broadcast(frame_data.tobytes())
                     except Exception as e:
@@ -275,6 +273,29 @@ async def get_state():
         "fps": state.fps,
         "grayscale": state.grayscale
     }
+
+@app.post("/api/browse")
+async def browse_path():
+    try:
+        # Script to open dialog
+        script = """
+import tkinter as tk
+from tkinter import filedialog
+root = tk.Tk()
+root.withdraw()
+root.attributes('-topmost', True)
+try:
+    path = filedialog.askdirectory()
+    print(path)
+except:
+    pass
+"""
+        # Run in subprocess to perform UI on main thread of that process
+        path = subprocess.check_output([sys.executable, "-c", script]).decode().strip()
+        return {"status": "success", "path": path}
+    except Exception as e:
+        print(f"Browse error: {e}")
+        return {"status": "error", "message": str(e)}
 
 @app.get("/api/download_npy")
 async def download_npy():

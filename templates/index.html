@@ -385,6 +385,8 @@
                         <div style="display: flex; gap: 10px;">
                             <input type="text" id="serverPathInput" class="ui-input" style="flex: 1;"
                                 placeholder="/path/to/folder or .mp4">
+                            <button class="btn" style="padding: 10px 15px;" onclick="browseFolder()"
+                                title="Browse Server">📂</button>
                             <button class="btn btn-primary" onclick="loadServerPath()">Load Path</button>
                             <button class="btn" style="background: var(--accent-color); color: #000;"
                                 onclick="downloadNpy()">Download NPY</button>
@@ -427,31 +429,24 @@
             ws.onclose = () => setTimeout(initWebSocket, 2000);
         }
 
+        let isGrayscale = false;
+
         function renderFrame(buffer) {
             const data = new Uint8Array(buffer);
-            if (data.length !== sourceW * sourceH * 3) return;
+
+            // Validate data length based on mode
+            const expectedLength = isGrayscale ? (sourceW * sourceH) : (sourceW * sourceH * 3);
+            if (data.length !== expectedLength) return;
 
             // Clear background
             ctx.fillStyle = '#111';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Calculate grid geometry
-            // We want to fit sourceW x sourceH grid into canvas.width x canvas.height
-            // Maintain aspect ratio? Prefer filling or fitting?
-            // "Maximize lattice" -> lets try to fill available space, maintaining individual cell squareness if possible?
-            // Usually LED grids are 1:1 physical aspect.
-            // Let's compute scale to fit entirely.
-
             const ratioW = canvas.width / sourceW;
             const ratioH = canvas.height / sourceH;
 
-            // Use the smaller ratio to fit the whole grid
-            // Or use independent ratios if we want to stretch (user said "maximize lattice", stretching might be better to see clearly)
-            // Let's stretch to fill the area. Video might be distored but DMX grid view is clear.
             const cellW = canvas.width / sourceW;
             const cellH = canvas.height / sourceH;
-
-            // Optional: Clamp cell aspect ratio? Nah, let's fill.
 
             const showIndices = (cellW > 20 && cellH > 15); // Threshold text drawing
 
@@ -460,9 +455,19 @@
             for (let y = 0; y < sourceH; y++) {
                 for (let x = 0; x < sourceW; x++) {
                     const i = y * sourceW + x;
-                    const r = data[i * 3];
-                    const g = data[i * 3 + 1];
-                    const b = data[i * 3 + 2];
+
+                    let r, g, b;
+                    if (isGrayscale) {
+                        const val = data[i];
+                        r = val;
+                        g = val;
+                        b = val;
+                    } else {
+                        const idx = i * 3;
+                        r = data[idx];
+                        g = data[idx + 1];
+                        b = data[idx + 2];
+                    }
 
                     const px = Math.floor(x * cellW);
                     const py = Math.floor(y * cellH);
@@ -491,7 +496,8 @@
                         ctx.textBaseline = 'middle';
 
                         // Center of cell
-                        ctx.fillText(i + 1, px + cellW / 2, py + cellH / 2);
+                        const labelValue = isGrayscale ? (i + 1) : (i * 3 + 1);
+                        ctx.fillText(labelValue, px + cellW / 2, py + cellH / 2);
                     }
                 }
             }
@@ -500,6 +506,7 @@
         function updateMeta(meta) {
             sourceW = meta.width;
             sourceH = meta.height;
+            isGrayscale = !!meta.grayscale;
             // Canvas resize handled by resizeCanvas() to match DOM size
 
             document.getElementById('resDisplay').innerText = `${sourceW}x${sourceH} ${meta.grayscale ? '(G)' : '(RGB)'}`;
@@ -626,6 +633,18 @@
                 }
             } catch (e) { }
             setTimeout(pollState, 200);
+        }
+
+        async function browseFolder() {
+            try {
+                const res = await fetch('/api/browse', { method: 'POST' });
+                const data = await res.json();
+                if (data.status === 'success' && data.path) {
+                    document.getElementById('serverPathInput').value = data.path;
+                }
+            } catch (e) {
+                console.error(e);
+            }
         }
 
         initWebSocket();
