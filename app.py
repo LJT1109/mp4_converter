@@ -15,6 +15,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, List
 import shutil
+import tempfile
+
+# Cross-platform temporary file path
+TEMP_NPY_PATH = os.path.join(tempfile.gettempdir(), "temp_output.npy")
 
 # Determine Base Directory (works for PyInstaller and dev)
 if getattr(sys, 'frozen', False):
@@ -82,7 +86,7 @@ class AppState:
 
     def load_video(self, input_path, fps=None, grayscale=False):
         try:
-            output_npy = "/tmp/temp_output.npy"
+            output_npy = TEMP_NPY_PATH
             self.grayscale = grayscale
             
             # Store filename without extension
@@ -261,7 +265,7 @@ async def get_state():
 
 @app.get("/api/download_npy")
 async def download_npy():
-    file_path = "/tmp/temp_output.npy"
+    file_path = TEMP_NPY_PATH
     if os.path.exists(file_path):
         from fastapi.responses import FileResponse
         # Use stored filename if available, otherwise default
