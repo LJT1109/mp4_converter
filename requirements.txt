@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+numpy
+opencv-python
+jinja2
+python-multipart
+websockets

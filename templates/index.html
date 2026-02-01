@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArtNet Pixel Console</title>
+    <style>
+        :root {
+            --bg-color: #0f0f13;
+            --panel-bg: rgba(30, 30, 40, 0.7);
+            --accent-color: #00bcd4;
+            --accent-glow: rgba(0, 188, 212, 0.3);
+            --text-primary: #ffffff;
+            --text-secondary: #aaaaaa;
+            --font-main: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --input-bg: rgba(0, 0, 0, 0.3);
+            --input-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            background: radial-gradient(circle at 10% 20%, rgba(20, 20, 50, 0.8) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(50, 20, 40, 0.5) 0%, transparent 40%),
+                #0f0f13;
+            color: var(--text-primary);
+            font-family: var(--font-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            padding: 15px 30px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--input-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        h1 {
+            margin: 0;
+            font-weight: 300;
+            letter-spacing: 2px;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            color: var(--accent-color);
+            text-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding: 20px;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        .dashboard {
+            width: 100%;
+            max-width: 100%;
+            height: 100%;
+            background: var(--panel-bg);
+            border-radius: 16px;
+            padding: 10px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--input-border);
+            backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* Canvas Area - Maximized */
+        .canvas-bg {
+            background: #111;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--input-border);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex: 1;
+            /* Take up all available space */
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+            position: relative;
+            min-height: 400px;
+        }
+
+        canvas {
+            /* Canvas is controlled by JS for resolution, CSS for display size */
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Settings Bar */
+        .settings-bar {
+            display: flex;
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 10px 15px;
+            border-radius: 8px;
+            align-items: center;
+            border: 1px solid var(--input-border);
+        }
+
+        .setting-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            flex: 1;
+        }
+
+        .setting-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .ui-input,
+        .ui-select {
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .ui-input:focus,
+        .ui-select:focus {
+            border-color: var(--accent-color);
+        }
+
+        /* Upload Section */
+        .upload-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .upload-card {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--input-border);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .upload-header {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .file-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            cursor: pointer;
+            padding: 10px;
+            border: 1px dashed var(--input-border);
+            border-radius: 4px;
+            text-align: center;
+            transition: all 0.2s;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .file-label:hover {
+            border-color: var(--accent-color);
+            color: white;
+        }
+
+        .btn {
+            background: #333;
+            border: none;
+            padding: 10px;
+            border-radius: 4px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-color), #008ba3);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 4px 15px var(--accent-glow);
+            transform: translateY(-1px);
+        }
+
+        /* Playback Controls */
+        .controls-row {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 10px 0;
+        }
+
+        .play-btns {
+            display: flex;
+            gap: 10px;
+        }
+
+        .ctrl-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ctrl-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .ctrl-btn.play {
+            background: var(--accent-color);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        /* Timeline */
+        .timeline-box {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .timeline-slider {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        .timeline-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .timeline-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+
+        /* Overlay */
+        .loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(3px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            border-radius: 8px;
+        }
+
+        .loading.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: var(--accent-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Artec Pixel Console</h1>
+        <div style="font-size:0.8rem; opacity: 0.7;">v2.3 Grid Mode</div>
+    </header>
+
+    <div class="main-container">
+        <div class="dashboard">
+
+            <!-- Global Settings -->
+            <div class="settings-bar">
+                <div class="setting-group">
+                    <label class="setting-label">Playback FPS</label>
+                    <input type="number" id="fpsInput" class="ui-input" value="30" onchange="updateSettings()" step="1">
+                </div>
+                <div class="setting-group" style="flex:2;">
+                    <label class="setting-label">Load Mode</label>
+                    <select id="modeSelect" class="ui-select" style="width: 100%;">
+                        <option value="rgb">RGB Color</option>
+                        <option value="gray">Grayscale</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Main Display -->
+            <div class="canvas-bg" id="canvasContainer">
+                <div class="loading" id="loadingOverlay">
+                    <div class="spinner"></div>
+                    <div id="loadingText">Processing...</div>
+                </div>
+                <canvas id="pixelCanvas"></canvas>
+            </div>
+
+            <!-- Timeline & Info -->
+            <div class="controls-row">
+                <div class="play-btns">
+                    <button class="ctrl-btn" onclick="sendControl('stop')">■</button>
+                    <button class="ctrl-btn" onclick="sendControl('pause')">❚❚</button>
+                    <button class="ctrl-btn play" onclick="sendControl('play')">▶</button>
+                </div>
+
+                <div class="timeline-box">
+                    <input type="range" min="0" max="100" value="0" class="timeline-slider" id="timeline"
+                        oninput="userDrag(this.value)">
+                    <div class="timeline-info">
+                        <span id="resDisplay">-- x --</span>
+                        <span><span id="currentDisplay">0</span> / <span id="framesDisplay">--</span></span>
+                        <span id="fpsDisplay">-- fps</span>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Uploads / Load -->
+            <div style="border-top: 1px solid var(--input-border); padding-top: 20px;">
+                <div class="upload-row" style="grid-template-columns: 1fr;">
+                    <!-- Col: Load Server Path -->
+                    <div class="upload-card">
+                        <div class="upload-header">Load & Export</div>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="serverPathInput" class="ui-input" style="flex: 1;"
+                                placeholder="/path/to/folder or .mp4">
+                            <button class="btn btn-primary" onclick="loadServerPath()">Load Path</button>
+                            <button class="btn" style="background: var(--accent-color); color: #000;"
+                                onclick="downloadNpy()">Download NPY</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws`;
+        let ws;
+        let canvas = document.getElementById('pixelCanvas');
+        let ctx = canvas.getContext('2d');
+        let container = document.getElementById('canvasContainer');
+
+        // Logic Source Resolution
+        let sourceW = 100, sourceH = 100;
+
+        let isDragging = false;
+
+        // Handle Resize
+        function resizeCanvas() {
+            // Make canvas match container physical size for crisp rendering
+            const rect = container.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function initWebSocket() {
+            ws = new WebSocket(wsUrl);
+            ws.binaryType = "arraybuffer";
+            ws.onopen = () => console.log("WebSocket Connected");
+            ws.onmessage = (event) => renderFrame(event.data);
+            ws.onclose = () => setTimeout(initWebSocket, 2000);
+        }
+
+        function renderFrame(buffer) {
+            const data = new Uint8Array(buffer);
+            if (data.length !== sourceW * sourceH * 3) return;
+
+            // Clear background
+            ctx.fillStyle = '#111';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Calculate grid geometry
+            // We want to fit sourceW x sourceH grid into canvas.width x canvas.height
+            // Maintain aspect ratio? Prefer filling or fitting?
+            // "Maximize lattice" -> lets try to fill available space, maintaining individual cell squareness if possible?
+            // Usually LED grids are 1:1 physical aspect.
+            // Let's compute scale to fit entirely.
+
+            const ratioW = canvas.width / sourceW;
+            const ratioH = canvas.height / sourceH;
+
+            // Use the smaller ratio to fit the whole grid
+            // Or use independent ratios if we want to stretch (user said "maximize lattice", stretching might be better to see clearly)
+            // Let's stretch to fill the area. Video might be distored but DMX grid view is clear.
+            const cellW = canvas.width / sourceW;
+            const cellH = canvas.height / sourceH;
+
+            // Optional: Clamp cell aspect ratio? Nah, let's fill.
+
+            const showIndices = (cellW > 20 && cellH > 15); // Threshold text drawing
+
+            ctx.lineWidth = 1;
+
+            for (let y = 0; y < sourceH; y++) {
+                for (let x = 0; x < sourceW; x++) {
+                    const i = y * sourceW + x;
+                    const r = data[i * 3];
+                    const g = data[i * 3 + 1];
+                    const b = data[i * 3 + 2];
+
+                    const px = Math.floor(x * cellW);
+                    const py = Math.floor(y * cellH);
+                    const pw = Math.ceil(cellW);
+                    const ph = Math.ceil(cellH);
+
+                    // Draw Cell
+                    ctx.fillStyle = `rgb(${r},${g},${b})`;
+                    ctx.fillRect(px, py, pw, ph);
+
+                    // Draw Border (Grid lines)
+                    // If cells are large enough, draw a faint border
+                    if (cellW > 4) {
+                        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                        ctx.strokeRect(px, py, pw, ph);
+                    }
+
+                    // Draw Index
+                    if (showIndices) {
+                        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+
+                        // Adaptive Font Size
+                        const fontSize = Math.min(cellW * 0.4, cellH * 0.6);
+                        ctx.font = `${fontSize}px sans-serif`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+
+                        // Center of cell
+                        ctx.fillText(i + 1, px + cellW / 2, py + cellH / 2);
+                    }
+                }
+            }
+        }
+
+        function updateMeta(meta) {
+            sourceW = meta.width;
+            sourceH = meta.height;
+            // Canvas resize handled by resizeCanvas() to match DOM size
+
+            document.getElementById('resDisplay').innerText = `${sourceW}x${sourceH} ${meta.grayscale ? '(G)' : '(RGB)'}`;
+            document.getElementById('framesDisplay').innerText = meta.frames;
+            document.getElementById('fpsDisplay').innerText = `${Math.round(meta.fps)} fps`;
+            document.getElementById('timeline').max = meta.frames - 1;
+        }
+
+        function updateFileName(type) {
+            const id = 'fileUpload';
+            const displayId = 'fileNameDisplay';
+            const input = document.getElementById(id);
+            if (input.files.length > 0) {
+                const name = input.files[0].name;
+                document.getElementById(displayId).innerText = `📂 ${name}`;
+                document.getElementById(displayId).style.color = 'var(--accent-color)';
+                document.getElementById(displayId).style.borderColor = 'var(--accent-color)';
+            }
+        }
+
+        function getCommonParams() {
+            return {
+                grayscale: document.getElementById('modeSelect').value === 'gray',
+                fps: document.getElementById('fpsInput').value
+            };
+        }
+
+        async function updateSettings() {
+            const fps = document.getElementById('fpsInput').value;
+            try {
+                await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fps: fps })
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        async function uploadFile() {
+            const input = document.getElementById('fileUpload');
+            if (!input.files.length) return alert("Select a file first.");
+
+            const params = getCommonParams();
+            const formData = new FormData();
+            formData.append('file', input.files[0]);
+            formData.append('grayscale', params.grayscale);
+
+            setLoading(true);
+            try {
+                const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                handleLoadResponse(await res.json());
+            } catch (e) { alert(e.message); }
+            finally { setLoading(false); }
+        }
+
+        async function loadServerPath() {
+            const path = document.getElementById('serverPathInput').value;
+            if (!path) return alert("Please enter a path.");
+
+            const params = getCommonParams();
+            setLoading(true);
+            try {
+                const res = await fetch('/api/load', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        filepath: path,
+                        fps: params.fps,
+                        grayscale: params.grayscale
+                    })
+                });
+                handleLoadResponse(await res.json());
+            } catch (e) { alert(e.message); }
+            finally { setLoading(false); }
+        }
+
+        function handleLoadResponse(data) {
+            if (data.status === 'success') {
+                updateMeta(data.meta);
+                document.getElementById('currentDisplay').innerText = "0";
+                document.getElementById('timeline').value = "0";
+                document.getElementById('fpsInput').value = data.meta.fps;
+            } else {
+                alert(data.message);
+            }
+        }
+
+        function downloadNpy() {
+            window.location.href = '/api/download_npy';
+        }
+
+        async function sendControl(action, value = null) {
+            await fetch('/api/control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, value })
+            });
+        }
+
+        function userDrag(val) {
+            isDragging = true;
+            document.getElementById('currentDisplay').innerText = val;
+            sendControl('seek', parseInt(val));
+            setTimeout(() => isDragging = false, 500);
+        }
+
+        function setLoading(active) {
+            const el = document.getElementById('loadingOverlay');
+            if (active) el.classList.add('active'); else el.classList.remove('active');
+        }
+
+        async function pollState() {
+            try {
+                const res = await fetch('/api/state');
+                const data = await res.json();
+
+                if (!isDragging) {
+                    document.getElementById('timeline').value = data.current_frame;
+                    document.getElementById('currentDisplay').innerText = data.current_frame;
+                }
+
+                if (data.width !== sourceW && data.width > 0) {
+                    updateMeta({ ...data, frames: data.total_frames });
+                }
+            } catch (e) { }
+            setTimeout(pollState, 200);
+        }
+
+        initWebSocket();
+        pollState();
+    </script>
+</body>
+
+</html>
