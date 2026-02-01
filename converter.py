@@ -114,7 +114,14 @@ def convert_sequence_to_npy(input_folder, output_path, grayscale=False):
 
     for i, fname in enumerate(files):
         fpath = os.path.join(input_folder, fname)
-        frame = cv2.imread(fpath)
+        # Use imdecode to handle non-ASCII paths on Windows correctly
+        try:
+            # np.fromfile handles unicode paths correctly
+            file_data = np.fromfile(fpath, dtype=np.uint8)
+            frame = cv2.imdecode(file_data, cv2.IMREAD_COLOR)
+        except Exception as e:
+            print(f"Error reading file binary '{fname}': {e}")
+            frame = None
         
         if frame is None:
             print(f"Warning: Could not read image '{fname}', skipping.")
