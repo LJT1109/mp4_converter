@@ -110,8 +110,18 @@ class AppState:
                 valid_exts = ('.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tga')
                 files = sorted([f for f in os.listdir(input_path) if f.lower().endswith(valid_exts)])
                 if files:
-                    first_img = cv2.imread(os.path.join(input_path, files[0]))
-                    self.height, self.width = first_img.shape[:2]
+                    fpath = os.path.join(input_path, files[0])
+                    try:
+                        file_data = np.fromfile(fpath, dtype=np.uint8)
+                        first_img = cv2.imdecode(file_data, cv2.IMREAD_COLOR)
+                        if first_img is not None:
+                            self.height, self.width = first_img.shape[:2]
+                        else:
+                            print(f"Warning: Could not decode first image '{files[0]}'")
+                            self.width, self.height = 100, 100
+                    except Exception as e:
+                        print(f"Error reading first image: {e}")
+                        self.width, self.height = 100, 100
                 else:
                     self.width = 100 # Default/Fallback
                     self.height = 100
