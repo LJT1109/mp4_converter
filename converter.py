@@ -15,14 +15,12 @@ def convert_mp4_to_npy(input_path, output_path, grayscale=False):
         grayscale (bool): Whether to convert frames to grayscale.
     """
     if not os.path.exists(input_path):
-        print(f"Error: Input file '{input_path}' not found.")
-        sys.exit(1)
+        raise FileNotFoundError(f"Error: Input file '{input_path}' not found.")
 
     cap = cv2.VideoCapture(input_path)
     
     if not cap.isOpened():
-        print(f"Error: Could not open video file '{input_path}'.")
-        sys.exit(1)
+        raise IOError(f"Error: Could not open video file '{input_path}'.")
 
     frames_data = []
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -62,8 +60,7 @@ def convert_mp4_to_npy(input_path, output_path, grayscale=False):
     print(f"\nFinished processing {frame_idx} frames.")
     
     if not frames_data:
-        print("No frames extracted.")
-        return
+        raise ValueError("No frames extracted from video.")
 
     # Stack into 2D array
     result_array = np.vstack(frames_data)
@@ -93,8 +90,7 @@ def convert_sequence_to_npy(input_folder, output_path, grayscale=False):
         grayscale (bool): Whether to convert frames to grayscale.
     """
     if not os.path.exists(input_folder):
-        print(f"Error: Input folder '{input_folder}' not found.")
-        sys.exit(1)
+        raise FileNotFoundError(f"Error: Input folder '{input_folder}' not found.")
 
     import re
 
@@ -107,8 +103,7 @@ def convert_sequence_to_npy(input_folder, output_path, grayscale=False):
     files = sorted([f for f in os.listdir(input_folder) if f.lower().endswith(valid_exts)], key=natural_sort_key)
     
     if not files:
-        print(f"Error: No image files found in '{input_folder}'.")
-        return
+        raise ValueError(f"Error: No image files found in '{input_folder}'.")
 
     frames_data = []
     width = 0
@@ -144,8 +139,7 @@ def convert_sequence_to_npy(input_folder, output_path, grayscale=False):
     print(f"\nFinished processing {len(frames_data)} frames.")
     
     if not frames_data:
-        print("No frames extracted.")
-        return
+        raise ValueError("No frames extracted from sequence.")
 
     result_array = np.vstack(frames_data)
     np.save(output_path, result_array)

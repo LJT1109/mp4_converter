@@ -87,6 +87,9 @@ class AppState:
     def load_video(self, input_path, fps=None, grayscale=False):
         try:
             output_npy = TEMP_NPY_PATH
+            # Clean up previous temp file if it exists
+            if os.path.exists(output_npy):
+                os.remove(output_npy)
             self.grayscale = grayscale
             
             # Store filename without extension
